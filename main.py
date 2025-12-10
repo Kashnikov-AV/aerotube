@@ -3,6 +3,7 @@ import sys
 import numpy as np
 from PyQt6 import QtWidgets as widgets, uic
 from PyQt6.QtCore import QTimer
+from PyQt6.QtGui import QPainter
 import pyqtgraph as pg
 
 from utils import cmaps
@@ -51,11 +52,15 @@ class ExampleApp(widgets.QMainWindow, Design):
         gradient_array[self.data.barrier] = 0.0
         
         br = self.data.draw_barrier()
+        print(type(br))
+        br.setCompositionMode(mode=QPainter.CompositionMode.CompositionMode_Multiply)
         
         self.img_item = pg.ImageItem(gradient_array)
         self.img_item.setColorMap(pg.colormap.get('plasma', source='matplotlib'))
+        self.canvas.clear()
         self.canvas.addItem(self.img_item)
         self.canvas.addItem(br)
+        # self.canvas.setCompositionMode(QPainter.CompositionMode.CompositionMode_Darken)
         self.canvas.showGrid(x=False, y=False)
         self.canvas.hideAxis('left')
         self.canvas.hideAxis('bottom')
@@ -75,6 +80,11 @@ class ExampleApp(widgets.QMainWindow, Design):
         self.bt_step.clicked.connect(self.step)
         self.slider_velocity.valueChanged.connect(self.set_velocity)
         self.slider_viscosity.valueChanged.connect(self.set_viscosity)
+        
+        
+        
+        # рисование стрелочки с силой 
+        # drawForceArrow(barrierxSum/barrierCount, barrierySum/barrierCount, barrierFx, barrierFy);
 
     def set_velocity(self):
         d = float(self.slider_velocity.value())

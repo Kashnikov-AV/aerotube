@@ -54,10 +54,10 @@ class Data:
         self.initials.viscosity = data / 1000
     
     def set_barrier(self):
-        self.barrier[90:111, 29] = True
-        self.barrier[90:111, 49]  = True
-        self.barrier[90, 29:49] = True
-        self.barrier[110, 29:49] = True
+        self.barrier[60:81, 29] = True
+        self.barrier[60:81, 49]  = True
+        self.barrier[60, 29:49] = True
+        self.barrier[80, 29:49] = True
         # self.barrier[int((self.initials.height / 2) - 8) : int((self.initials.height / 2) + 8, self.initials.height / 2)] = True  # simple linear barrier
         self.barrierN  = np.roll(self.barrier,   1, axis=0)  # sites just north of barriers
         self.barrierS  = np.roll(self.barrier,  -1, axis=0)  # sites just south of barriers
@@ -70,8 +70,9 @@ class Data:
         
     def draw_barrier(self):
         bImageArray = np.zeros((self.initials.width, self.initials.height, 4), np.uint8)  # an RGBA image
-        bImageArray[self.barrier, 3] = 255  # set alpha=255 only at barrier sites
-        barrierImage = pg.ImageItem(self.barrier)
+        bImageArray[self.barrier] = [0, 0, 0, 255]
+        bImageArray[~self.barrier] = [1, 1, 1, 0]
+        barrierImage = pg.ImageItem(bImageArray)
         return barrierImage
     
     # Move all particles by one step along their directions of motion (pbc):
