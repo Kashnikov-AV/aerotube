@@ -1,0 +1,18 @@
+cmaps = [
+    'plasma',
+    'viridis',
+    'inferno',
+    'magma',
+    'coolwarm',
+    'autumn',
+    'bone',
+    'cool',
+    'copper',
+    'gray',
+    'hot',
+    'jet',
+    'pink',
+    'spring',
+    'summer',
+    'winter',
+]
