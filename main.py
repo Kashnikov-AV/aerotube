@@ -36,13 +36,12 @@ class ExampleApp(widgets.QMainWindow, Design):
         self.label_vis.setText(f'вязкость = {self.data.initials.viscosity}')
 
         # barrier type
-        self.select_prop.addItems(['Квадрат', 'Цилиндр', 'Профиль крыла'])
-        # plot type
-        self.select_graph.addItems(['Плотность', 'x скорость', 'у скорость', 'скорость', 'завихрение'])
-        # цветовые схемы
-        self.select_cmap.addItems(cmaps)
-        # обработка выбора меню cmap
-        self.select_cmap.currentIndexChanged.connect(self.set_cmap)
+        self.select_prop.addItems(['Квадрат', 'Цилиндр', 'Профиль крыла']) # barrier type
+        self.select_prop.currentIndexChanged.connect(self.set_barrier_type)
+        self.select_graph.addItems(['Плотность', 'x скорость', 'у скорость', 'скорость', 'завихрение']) # plot type
+        self.select_graph.currentIndexChanged.connect(self.set_plot_type)
+        self.select_cmap.addItems(cmaps) # цветовые схемы
+        self.select_cmap.currentIndexChanged.connect(self.set_cmap) # обработка выбора меню cmap
         
         # рисование градиента
         gradient_array = np.linspace(0, 1, 200).reshape(-1, 1) # 1 строка, 200 столбцов
@@ -102,6 +101,13 @@ class ExampleApp(widgets.QMainWindow, Design):
     def step(self):
         # Эта функция вызывается АВТОМАТИЧЕСКИ каждые 50 мс
         print('Таймер сработал!')
+        self.data.stream();
+        self.data.collide();
+        self.img_item = pg.ImageItem(self.data.curl())
+        self.canvas.clear()
+        self.canvas.addItem(self.img_item)
+        self.img_item.setColorMap(pg.colormap.get('plasma', source='matplotlib'))
+        # self.canvas.addItem(br)
 
     def set_start(self):
         self.bt_step.setEnabled(False)
@@ -124,6 +130,30 @@ class ExampleApp(widgets.QMainWindow, Design):
     def set_cmap(self):
         cmap = self.select_cmap.currentText()
         self.img_item.setColorMap(pg.colormap.get(cmap, source='matplotlib'))
+        
+    def set_barrier_type(self):
+        barrier = self.select_prop.currentText()
+        if barrier == 'Квадрат':
+            pass
+        elif barrier == 'Цилиндр':
+            pass
+        elif barrier == 'Профиль крыла':
+            pass
+    
+    def set_plot_type(self):
+        plot = self.select_prop.currentText()
+        if plot == 'Плотность':
+            pass
+        elif plot == 'x скорость':
+            pass
+        elif plot == 'у скорость':
+            pass
+        elif plot == 'скорость':
+            pass
+        elif plot == 'завихрение':
+            pass
+            
+
 
 
 

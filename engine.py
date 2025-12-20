@@ -1,7 +1,4 @@
 import numpy as np
-#import time
-#import matplotlib.pyplot
-#import matplotlib.animation
 import pyqtgraph as pg
 from dataclasses import dataclass
 
@@ -54,10 +51,10 @@ class Data:
         self.initials.viscosity = data / 1000
     
     def set_barrier(self):
-        self.barrier[60:81, 29] = True
-        self.barrier[60:81, 49]  = True
+        self.barrier[40:61, 29] = True
+        self.barrier[40:61, 49] = True
+        self.barrier[40, 29:49] = True
         self.barrier[60, 29:49] = True
-        self.barrier[80, 29:49] = True
         # self.barrier[int((self.initials.height / 2) - 8) : int((self.initials.height / 2) + 8, self.initials.height / 2)] = True  # simple linear barrier
         self.barrierN  = np.roll(self.barrier,   1, axis=0)  # sites just north of barriers
         self.barrierS  = np.roll(self.barrier,  -1, axis=0)  # sites just south of barriers
@@ -90,14 +87,14 @@ class Data:
         self.nNW = np.roll(self.nNW, -1, axis=1)
         self.nSW = np.roll(self.nSW, -1, axis=1)
         # Use tricky boolean arrays to handle barrier collisions (bounce-back):
-        self.nN[self.barrierN] = self.nS[self.barrier]
-        self.nS[self.barrierS] = self.nN[self.barrier]
-        self.nE[self.barrierE] = self.nW[self.barrier]
-        self.nW[self.barrierW] = self.nE[self.barrier]
-        self.nNE[self.barrierNE] = self.nSW[self.barrier]
-        self.nNW[self.barrierNW] = self.nSE[self.barrier]
-        self.nSE[self.barrierSE] = self.nNW[self.barrier]
-        self.nSW[self.barrierSW] = self.nNE[self.barrier]
+        self.nN[self.barrierN.T] = self.nS[self.barrier.T]
+        self.nS[self.barrierS.T] = self.nN[self.barrier.T]
+        self.nE[self.barrierE.T] = self.nW[self.barrier.T]
+        self.nW[self.barrierW.T] = self.nE[self.barrier.T]
+        self.nNE[self.barrierNE.T] = self.nSW[self.barrier.T]
+        self.nNW[self.barrierNW.T] = self.nSE[self.barrier.T]
+        self.nSE[self.barrierSE.T] = self.nNW[self.barrier.T]
+        self.nSW[self.barrierSW.T] = self.nNE[self.barrier.T]
 
 
 
@@ -124,27 +121,26 @@ class Data:
         u2 = ux2 + uy2
         omu215 = 1 - 1.5 * u2  # "one minus u2 times 1.5"
         uxuy = self.ux * self.uy
-        self.n0 = (1 - self.initials.omega) * n0 + omega * four9ths * rho * omu215
-        self.nN = (1 - self.initials.omega) * nN + omega * one9th * rho * (omu215 + 3 * uy + 4.5 * uy2)
-        self.nS = (1 - self.initials.omega) * nS + omega * one9th * rho * (omu215 - 3 * uy + 4.5 * uy2)
-        self.nE = (1 - self.initials.omega) * nE + omega * one9th * rho * (omu215 + 3 * ux + 4.5 * ux2)
-        self.nW = (1 - self.initials.omega) * nW + omega * one9th * rho * (omu215 - 3 * ux + 4.5 * ux2)
-        self.nNE = (1 - omega) * nNE + omega * one36th * rho * (omu215 + 3 * (ux + uy) + 4.5 * (u2 + 2 * uxuy))
-        self.nNW = (1 - omega) * nNW + omega * one36th * rho * (omu215 + 3 * (-ux + uy) + 4.5 * (u2 - 2 * uxuy))
-        self.nSE = (1 - omega) * nSE + omega * one36th * rho * (omu215 + 3 * (ux - uy) + 4.5 * (u2 - 2 * uxuy))
-        self.nSW = (1 - omega) * nSW + omega * one36th * rho * (omu215 + 3 * (-ux - uy) + 4.5 * (u2 + 2 * uxuy))
+        self.n0 = (1 - self.initials.omega) * self.n0 + self.initials.omega * self.initials.four9ths * self.rho * omu215
+        self.nN = (1 - self.initials.omega) * self.nN + self.initials.omega * self.initials.one9th * self.rho * (omu215 + 3 * self.uy + 4.5 * uy2)
+        self.nS = (1 - self.initials.omega) * self.nS + self.initials.omega * self.initials.one9th * self.rho * (omu215 - 3 * self.uy + 4.5 * uy2)
+        self.nE = (1 - self.initials.omega) * self.nE + self.initials.omega * self.initials.one9th * self.rho * (omu215 + 3 * self.ux + 4.5 * ux2)
+        self.nW = (1 - self.initials.omega) * self.nW + self.initials.omega * self.initials.one9th * self.rho * (omu215 - 3 * self.ux + 4.5 * ux2)
+        self.nNE = (1 - self.initials.omega) * self.nNE + self.initials.omega * self.initials.one36th * self.rho * (omu215 + 3 * (self.ux + self.uy) + 4.5 * (u2 + 2 * uxuy))
+        self.nNW = (1 - self.initials.omega) * self.nNW + self.initials.omega * self.initials.one36th * self.rho * (omu215 + 3 * (-self.ux + self.uy) + 4.5 * (u2 - 2 * uxuy))
+        self.nSE = (1 - self.initials.omega) * self.nSE + self.initials.omega * self.initials.one36th * self.rho * (omu215 + 3 * (self.ux - self.uy) + 4.5 * (u2 - 2 * uxuy))
+        self.nSW = (1 - self.initials.omega) * self.nSW + self.initials.omega * self.initials.one36th * self.rho * (omu215 + 3 * (-self.ux - self.uy) + 4.5 * (u2 + 2 * uxuy))
         # Force steady rightward flow at ends (no need to set 0, N, and S components):
-        self.nE[:, 0] = one9th * (1 + 3 * u0 + 4.5 * u0 ** 2 - 1.5 * u0 ** 2)
-        self.nW[:, 0] = one9th * (1 - 3 * u0 + 4.5 * u0 ** 2 - 1.5 * u0 ** 2)
-        self.nNE[:, 0] = one36th * (1 + 3 * u0 + 4.5 * u0 ** 2 - 1.5 * u0 ** 2)
-        self.nSE[:, 0] = one36th * (1 + 3 * u0 + 4.5 * u0 ** 2 - 1.5 * u0 ** 2)
-        self.nNW[:, 0] = one36th * (1 - 3 * u0 + 4.5 * u0 ** 2 - 1.5 * u0 ** 2)
-        self.nSW[:, 0] = one36th * (1 - 3 * u0 + 4.5 * u0 ** 2 - 1.5 * u0 ** 2)
+        self.nE[:, 0]  = self.initials.one9th * (1 + 3 *  self.initials.u0 + 4.5 * self.initials.u0 ** 2 - 1.5 * self.initials.u0 ** 2)
+        self.nW[:, 0]  = self.initials.one9th * (1 - 3 *  self.initials.u0 + 4.5 * self.initials.u0 ** 2 - 1.5 * self.initials.u0 ** 2)
+        self.nNE[:, 0] = self.initials.one36th * (1 + 3 * self.initials.u0 + 4.5 * self.initials.u0 ** 2 - 1.5 * self.initials.u0 ** 2)
+        self.nSE[:, 0] = self.initials.one36th * (1 + 3 * self.initials.u0 + 4.5 * self.initials.u0 ** 2 - 1.5 * self.initials.u0 ** 2)
+        self.nNW[:, 0] = self.initials.one36th * (1 - 3 * self.initials.u0 + 4.5 * self.initials.u0 ** 2 - 1.5 * self.initials.u0 ** 2)
+        self.nSW[:, 0] = self.initials.one36th * (1 - 3 * self.initials.u0 + 4.5 * self.initials.u0 ** 2 - 1.5 * self.initials.u0 ** 2)
 
-# # Compute curl of the macroscopic velocity field:
-# def curl(ux, uy):
-#     return np.roll(uy, -1, axis=1) - np.roll(uy, 1, axis=1) - np.roll(ux, -1, axis=0) + np.roll(ux, 1,
-#                                                                                                             axis=0)
+    # Считаем вихри
+    def curl(self):
+        return np.roll(self.uy, -1, axis=1) - np.roll(self.uy, 1, axis=1) - np.roll(self.ux, -1, axis=0) + np.roll(self.ux, 1, axis=0)
 #
 #
 # # Here comes the graphics and animation...
@@ -156,28 +152,3 @@ class Data:
 # bImageArray = np.zeros((height, width, 4), np.uint8)  # an RGBA image
 # bImageArray[barrier, 3] = 255  # set alpha=255 only at barrier sites
 # barrierImage = matplotlib.pyplot.imshow(bImageArray, origin='lower', interpolation='none')
-#
-# # Function called for each successive animation frame:
-# startTime = time.perf_counter()
-#
-#
-# # frameList = open('frameList.txt','w')		# file containing list of images (to make movie)
-# def nextFrame(arg):  # (arg is the frame number, which we don't need)
-#     global startTime
-#     if performanceData and (arg % 100 == 0) and (arg > 0):
-#         endTime = time.perf_counter()
-#         print
-#         "%1.1f" % (100 / (endTime - startTime)), 'frames per second'
-#         startTime = endTime
-#     # frameName = "frame%04d.png" % arg
-#     # matplotlib.pyplot.savefig(frameName)
-#     # frameList.write(frameName + '\n')
-#     for step in range(20):  # adjust number of steps for smooth animation
-#         stream()
-#         collide()
-#     fluidImage.set_array(curl(ux, uy))
-#     return (fluidImage, barrierImage)  # return the figure elements to redraw
-#
-#
-# animate = matplotlib.animation.FuncAnimation(theFig, nextFrame, interval=1, blit=True)
-# matplotlib.pyplot.show()
