@@ -46,12 +46,9 @@ class ExampleApp(widgets.QMainWindow, Design):
         # рисование градиента
         gradient_array = np.linspace(0, 1, 200).reshape(-1, 1) # 1 строка, 200 столбцов
         gradient_array = np.repeat(gradient_array, 80, axis=1)  # повторяем 80 строк
+        
         self.data.set_barrier()
-        
-        gradient_array[self.data.barrier] = 0.0
-        
         br = self.data.draw_barrier()
-        print(type(br))
         br.setCompositionMode(mode=QPainter.CompositionMode.CompositionMode_Multiply)
         
         self.img_item = pg.ImageItem(gradient_array)
@@ -97,36 +94,6 @@ class ExampleApp(widgets.QMainWindow, Design):
         self.data.update_viscosity(d)
         # FIXME change data
 
-        # db_spin_velocity
-    def step(self):
-        # Эта функция вызывается АВТОМАТИЧЕСКИ каждые 50 мс
-        print('Таймер сработал!')
-        self.data.stream();
-        self.data.collide();
-        self.img_item = pg.ImageItem(self.data.curl())
-        self.canvas.clear()
-        self.canvas.addItem(self.img_item)
-        self.img_item.setColorMap(pg.colormap.get('plasma', source='matplotlib'))
-        # self.canvas.addItem(br)
-
-    def set_start(self):
-        self.bt_step.setEnabled(False)
-        self.bt_start.setEnabled(False)
-        self.bt_reset.setEnabled(False)
-        self.bt_stop.setEnabled(True)
-        # Шаг 3: Запускаем таймер (например, каждые 50 мс)
-        # Теперь каждые 50 миллисекунд будет вызываться self.step()
-        self.timer.start(500)
-        print('start')
-
-    def set_stop(self):
-        self.bt_step.setEnabled(True)
-        self.bt_start.setEnabled(True)
-        self.bt_reset.setEnabled(True)
-        self.bt_stop.setEnabled(False)
-        self.timer.stop()
-        print('stop')
-
     def set_cmap(self):
         cmap = self.select_cmap.currentText()
         self.img_item.setColorMap(pg.colormap.get(cmap, source='matplotlib'))
@@ -141,17 +108,52 @@ class ExampleApp(widgets.QMainWindow, Design):
             pass
     
     def set_plot_type(self):
-        plot = self.select_prop.currentText()
+        plot = self.select_graph.currentText()
+        print(plot)
         if plot == 'Плотность':
-            pass
+            return self.data.rho.T
         elif plot == 'x скорость':
-            pass
+            return self.data.ux.T
         elif plot == 'у скорость':
-            pass
+            return self.data.uy.T
         elif plot == 'скорость':
-            pass
+            return self.data.ux.T + self.data.uy.T
         elif plot == 'завихрение':
-            pass
+            return self.data.curl()
+        
+        
+        # db_spin_velocity
+    def step(self):
+        # Эта функция вызывается АВТОМАТИЧЕСКИ каждые 50 мс
+        # print('Таймер сработал!')
+        self.data.stream();
+        self.data.collide();
+        graphic = self.set_plot_type()
+        self.img_item = pg.ImageItem(graphic)
+        self.canvas.clear()
+        self.canvas.addItem(self.img_item)
+        self.set_cmap()
+        # self.canvas.addItem(br)
+
+    def set_start(self):
+        self.bt_step.setEnabled(False)
+        self.bt_start.setEnabled(False)
+        self.bt_reset.setEnabled(False)
+        self.bt_stop.setEnabled(True)
+        # Шаг 3: Запускаем таймер (например, каждые 50 мс)
+        # Теперь каждые 50 миллисекунд будет вызываться self.step()
+        self.timer.start(50)
+        print('start')
+        self.step()
+        
+
+    def set_stop(self):
+        self.bt_step.setEnabled(True)
+        self.bt_start.setEnabled(True)
+        self.bt_reset.setEnabled(True)
+        self.bt_stop.setEnabled(False)
+        self.timer.stop()
+        print('stop')
             
 
 

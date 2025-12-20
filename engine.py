@@ -9,7 +9,7 @@ class Initials:
     width = 200
     viscosity = 0.02  # fluid viscosity
     omega = 1 / (3 * viscosity + 0.5)  # "relaxation" parameter
-    u0 = 0.1  # initial and in-flow speed
+    u0 = 0.001  # initial and in-flow speed
     four9ths = 4.0 / 9.0  # abbreviations for lattice-Boltzmann weight factors
     one9th = 1.0 / 9.0
     one36th = 1.0 / 36.0
@@ -42,7 +42,7 @@ class Data:
 
     @property
     def uy(self):
-        return(self.nN + self.nNE + self.nNW - self.nS - self.nSE - self.nSW) / self.rho  # macroscopic y velocity
+        return (self.nN + self.nNE + self.nNW - self.nS - self.nSE - self.nSW) / self.rho  # macroscopic y velocity
 
     def update_U0(self, data):
         self.initials.U0 = data / 1000
@@ -140,7 +140,8 @@ class Data:
 
     # Считаем вихри
     def curl(self):
-        return np.roll(self.uy, -1, axis=1) - np.roll(self.uy, 1, axis=1) - np.roll(self.ux, -1, axis=0) + np.roll(self.ux, 1, axis=0)
+        c = np.roll(self.uy.T, -1, axis=1) - np.roll(self.uy.T, 1, axis=1) - np.roll(self.ux.T, -1, axis=0) + np.roll(self.ux.T, 1, axis=0)
+        return c
 #
 #
 # # Here comes the graphics and animation...
