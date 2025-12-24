@@ -32,6 +32,10 @@ class ExampleApp(widgets.QMainWindow, Design):
         self.label_vel.setText(f'скорость потока = {self.data.ini.u0}')
         self.label_vis.setText(f'вязкость = {self.data.ini.viscosity}')
 
+        self.label_fx.setText(f'Fx={0}')
+        self.label_fy.setText(f'Fy={0}')
+        self.label_f.setText(f'F={0}')
+
         # barrier type
         self.select_prop.addItems(['без барьера', 'простой барьер', 'квадрат', 'цилиндр', 'профиль крыла']) # barrier type
         self.select_prop.currentIndexChanged.connect(self.set_barrier_type)
@@ -64,15 +68,14 @@ class ExampleApp(widgets.QMainWindow, Design):
 
     def set_velocity(self):
         d = float(self.slider_velocity.value())
-        self.label_vel.setText(f'скорость потока = {d / 1000}')
-        self.data.update_U0(d)
-        # FIXME change data
+        print('change u0')
+        self.data.ini.u0 = d / 1000
+        self.label_vel.setText(f'скорость потока = {self.data.ini.u0}')
 
     def set_viscosity(self):
         d = float(self.slider_viscosity.value())
-        self.label_vis.setText(f'вязкость = {d / 1000}')
-        self.data.update_viscosity(d)
-        # FIXME change data
+        self.data.ini.viscosity = d / 1000
+        self.label_vis.setText(f'вязкость = {self.data.ini.viscosity}')
 
     def set_cmap(self):
         cmap = self.select_cmap.currentText()
@@ -90,14 +93,15 @@ class ExampleApp(widgets.QMainWindow, Design):
             self.data.set_circle_barrier()
             self.draw_plot()
         elif barr == 'профиль крыла':
-            pass
+            self.data.set_angle_barrier()
+            self.draw_plot()
         elif barr == 'без барьера':
             self.data.reset_barrier()
             self.draw_plot()
     
     def set_plot_type(self):
         plot = self.select_graph.currentText()
-        if plot == 'Плотность':
+        if plot == 'плотность':
             return self.data.rho
         elif plot == 'x скорость':
             return self.data.ux
@@ -108,26 +112,18 @@ class ExampleApp(widgets.QMainWindow, Design):
         elif plot == 'завихрение':
             return self.data.curl()
 
-
-
     def step(self):
-        # Эта функция вызывается АВТОМАТИЧЕСКИ каждые 50 мс
-        print('Таймер сработал!')
+        # шаг расчета
         self.data.collide()
         self.data.stream()
         self.draw_plot()
 
-        # Проверка средних скоростей
-        mean_ux = np.mean(self.data.ux)
-        mean_uy = np.mean(self.data.uy)
-        print(f"Шаг: средняя ux={mean_ux:.6f}, uy={mean_uy:.6f}")
+        # считаем силы
+        Fx, Fy, _, _ = self.data.calculate_force()
+        self.label_fx.setText(f'Fx={Fx:.4f}')
+        self.label_fy.setText(f'Fy={Fy:.4f}')
+        self.label_f.setText(f'F={np.sqrt(Fx**2 + Fy**2):.4f}')
 
-        # Проверка на левой и правой границах
-        left_flow = np.mean(self.data.nE[0, :] - self.data.nW[0, :])
-        right_flow = np.mean(self.data.nE[-1, :] - self.data.nW[-1, :])
-        print(f"  Поток слева: {left_flow:.6f}, справа: {right_flow:.6f}")
-
-        print(f"u0 = {self.data.ini.u0}")
 
     def set_start(self):
         self.bt_step.setEnabled(False)
@@ -136,7 +132,7 @@ class ExampleApp(widgets.QMainWindow, Design):
         self.bt_stop.setEnabled(True)
         # Шаг 3: Запускаем таймер (например, каждые 50 мс)
         # Теперь каждые 50 миллисекунд будет вызываться self.step()
-        self.timer.start(50)
+        self.timer.start(3)
         print('start')
         self.step()
 

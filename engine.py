@@ -6,9 +6,9 @@ from dataclasses import dataclass
 class Initials:
     height = 80  # решетка
     width = 200
-    viscosity = 0.02  # вязкость
+    viscosity = 0.005  # вязкость
     omega = 1 / (3 * viscosity + 0.5)  # "relaxation" parameter
-    u0 = 0.002  # initial and in-flow speed
+    u0 = 0.03  # initial and in-flow speed
     four9ths = 4.0 / 9.0  # abbreviations for lattice-Boltzmann weight factors
     one9th = 1.0 / 9.0
     one36th = 1.0 / 36.0
@@ -72,16 +72,23 @@ class Data:
     def set_simple_barrier(self):
         ''' простой барьер '''
         self.reset_barrier()
-        self.barrier[60, 29:49] = True
+        self.barrier[80, 29:49] = True
         self.other_barriers()
 
     def set_square_barrier(self):
         ''' квадратный барьер '''
         self.reset_barrier()
-        self.barrier[40:61, 29] = True
-        self.barrier[40:61, 49] = True
-        self.barrier[40, 29:49] = True
+        self.barrier[60:81, 29] = True
+        self.barrier[60:81, 49] = True
         self.barrier[60, 29:49] = True
+        self.barrier[80, 29:49] = True
+        self.other_barriers()
+
+    def set_angle_barrier(self):
+        ''' угол барьер '''
+        self.reset_barrier()
+        self.barrier[60:81, 29] = True
+        self.barrier[60, 29:39] = True
         self.other_barriers()
 
     def set_circle_barrier(self):
@@ -103,7 +110,7 @@ class Data:
     
     # перемещение частиц вдоль их направления движения
     def stream(self):
-        # Сохраняем СТАРЫЕ значения для bounce-back
+        # Сохраняем старые значения
         nN_old = self.nN.copy()
         nS_old = self.nS.copy()
         nE_old = self.nE.copy()
@@ -113,62 +120,76 @@ class Data:
         nSE_old = self.nSE.copy()
         nSW_old = self.nSW.copy()
 
-        # Распространение (правильно для вашей конвенции)
-        self.nN  = np.roll(self.nN,  1, axis=1)  # север: +Y
-        self.nNE = np.roll(self.nNE, 1, axis=1)
-        self.nNW = np.roll(self.nNW, 1, axis=1)
+        # Восток-Запад (X)
+        self.nE  = np.roll(self.nE,   1, axis=0)
+        self.nNE = np.roll(self.nNE,  1, axis=0)
+        self.nSE = np.roll(self.nSE,  1, axis=0)
 
-        self.nS  = np.roll(self.nS,  -1, axis=1)  # юг: -Y
-        self.nSE = np.roll(self.nSE, -1, axis=1)
-        self.nSW = np.roll(self.nSW, -1, axis=1)
-
-        self.nE  = np.roll(self.nE,  1, axis=0)  # восток: +X
-        self.nNE = np.roll(self.nNE, 1, axis=0)
-        self.nSE = np.roll(self.nSE, 1, axis=0)
-
-        self.nW  = np.roll(self.nW,  -1, axis=0)  # запад: -X
+        self.nW  = np.roll(self.nW,  -1, axis=0)
         self.nNW = np.roll(self.nNW, -1, axis=0)
         self.nSW = np.roll(self.nSW, -1, axis=0)
 
-        # bounce-back (используем старые значения!)
-        self.nN[self.barrier] = nS_old[self.barrier]    # север ← юг
-        self.nS[self.barrier] = nN_old[self.barrier]    # юг ← север
-        self.nE[self.barrier] = nW_old[self.barrier]    # восток ← запад
-        self.nW[self.barrier] = nE_old[self.barrier]    # запад ← восток
-        self.nNE[self.barrier] = nSW_old[self.barrier]  # северо-восток ← юго-запад
-        self.nNW[self.barrier] = nSE_old[self.barrier]  # северо-запад ← юго-восток
-        self.nSE[self.barrier] = nNW_old[self.barrier]  # юго-восток ← северо-запад
-        self.nSW[self.barrier] = nNE_old[self.barrier]  # юго-запад ← северо-восток
+        # Север-Юг (Y)
+        self.nN  = np.roll(self.nN,   1, axis=1)
+        self.nNE = np.roll(self.nNE,  1, axis=1)
+        self.nNW = np.roll(self.nNW,  1, axis=1)
+
+        self.nS  = np.roll(self.nS,  -1, axis=1)
+        self.nSE = np.roll(self.nSE, -1, axis=1)
+        self.nSW = np.roll(self.nSW, -1, axis=1)
+
+        # BOUNCE-BACK (используем маски!):
+        self.nN[self.barrierN] = nS_old[self.barrier]    # северные ← южные
+        self.nS[self.barrierS] = nN_old[self.barrier]    # южные ← северные
+        self.nE[self.barrierE] = nW_old[self.barrier]    # восточные ← западные
+        self.nW[self.barrierW] = nE_old[self.barrier]    # западные ← восточные
+        self.nNE[self.barrierNE] = nSW_old[self.barrier] # северо-восточные ← юго-западные
+        self.nNW[self.barrierNW] = nSE_old[self.barrier] # северо-западные ← юго-восточные
+        self.nSE[self.barrierSE] = nNW_old[self.barrier] # юго-восточные ← северо-западные
+        self.nSW[self.barrierSW] = nNE_old[self.barrier] # юго-западные ← северо-восточные
 
     def collide(self):
-        ux2 = self.ux * self.ux  # pre-compute terms used repeatedly...
-        uy2 = self.uy * self.uy
+        # Вычисляем макроскопические параметры
+        current_rho = self.rho
+        current_ux = self.ux
+        current_uy = self.uy
+
+        # Столкновение
+        ux2 = current_ux * current_ux
+        uy2 = current_uy * current_uy
         u2 = ux2 + uy2
-        omu215 = 1 - 1.5 * u2  # "one minus u2 times 1.5"
-        uxuy = self.ux * self.uy
-        self.n0 = (1 - self.ini.omega) * self.n0 + self.ini.omega * self.ini.four9ths * self.rho * omu215
-        self.nN = (1 - self.ini.omega) * self.nN + self.ini.omega * self.ini.one9th * self.rho * (omu215 + 3 * self.uy + 4.5 * uy2)
-        self.nS = (1 - self.ini.omega) * self.nS + self.ini.omega * self.ini.one9th * self.rho * (omu215 - 3 * self.uy + 4.5 * uy2)
-        self.nE = (1 - self.ini.omega) * self.nE + self.ini.omega * self.ini.one9th * self.rho * (omu215 + 3 * self.ux + 4.5 * ux2)
-        self.nW = (1 - self.ini.omega) * self.nW + self.ini.omega * self.ini.one9th * self.rho * (omu215 - 3 * self.ux + 4.5 * ux2)
-        self.nNE= (1 - self.ini.omega) * self.nNE + self.ini.omega * self.ini.one36th * self.rho * (omu215 + 3 * (self.ux + self.uy) + 4.5 * (u2 + 2 * uxuy))
-        self.nNW = (1 - self.ini.omega) * self.nNW + self.ini.omega * self.ini.one36th * self.rho * (omu215 + 3 * (-self.ux + self.uy) + 4.5 * (u2 - 2 * uxuy))
-        self.nSE = (1 - self.ini.omega) * self.nSE + self.ini.omega * self.ini.one36th * self.rho * (omu215 + 3 * (self.ux - self.uy) + 4.5 * (u2 - 2 * uxuy))
-        self.nSW = (1 - self.ini.omega) * self.nSW + self.ini.omega * self.ini.one36th * self.rho * (omu215 + 3 * (-self.ux - self.uy) + 4.5 * (u2 + 2 * uxuy))
-        # Force steady rightward flow at ends (no need to set 0, N, and S components):
-        self.nE[ 0, :] = self.ini.one9th  * (1 + 3 * self.ini.u0 + 4.5 * self.ini.u0 ** 2 - 1.5 * self.ini.u0 ** 2)
-        self.nW[ 0, :] = self.ini.one9th  * (1 - 3 * self.ini.u0 + 4.5 * self.ini.u0 ** 2 - 1.5 * self.ini.u0 ** 2)
-        self.nNE[0, :] = self.ini.one36th * (1 + 3 * self.ini.u0 + 4.5 * self.ini.u0 ** 2 - 1.5 * self.ini.u0 ** 2)
-        self.nSE[0, :] = self.ini.one36th * (1 + 3 * self.ini.u0 + 4.5 * self.ini.u0 ** 2 - 1.5 * self.ini.u0 ** 2)
-        self.nNW[0, :] = self.ini.one36th * (1 - 3 * self.ini.u0 + 4.5 * self.ini.u0 ** 2 - 1.5 * self.ini.u0 ** 2)
-        self.nSW[0, :] = self.ini.one36th * (1 - 3 * self.ini.u0 + 4.5 * self.ini.u0 ** 2 - 1.5 * self.ini.u0 ** 2)
-        # ----------------------------------------------------
-        self.nE[-1, :] = self.nE[-2, :]
-        self.nW[-1, :] = self.nW[-2, :]
-        self.nNE[-1, :] = self.nNE[-2, :]
-        self.nSE[-1, :] = self.nSE[-2, :]
-        self.nNW[-1, :] = self.nNW[-2, :]
-        self.nSW[-1, :] = self.nSW[-2, :]
+        omu215 = 1 - 1.5 * u2
+        uxuy = current_ux * current_uy
+
+        vis = self.ini.viscosity # вязкость
+        omega = 1 / (3 * vis + 0.5)  # "relaxation" parameter
+
+        # Релаксация к равновесию
+        self.n0 = (1 - omega) * self.n0 + omega * self.ini.four9ths * current_rho * omu215
+        self.nN = (1 - omega) * self.nN + omega * self.ini.one9th * current_rho * (omu215 + 3 * current_uy + 4.5 * uy2)
+        self.nS = (1 - omega) * self.nS + omega * self.ini.one9th * current_rho * (omu215 - 3 * current_uy + 4.5 * uy2)
+        self.nE = (1 - omega) * self.nE + omega * self.ini.one9th * current_rho * (omu215 + 3 * current_ux + 4.5 * ux2)
+        self.nW = (1 - omega) * self.nW + omega * self.ini.one9th * current_rho * (omu215 - 3 * current_ux + 4.5 * ux2)
+        self.nNE = (1 - omega) * self.nNE + omega * self.ini.one36th * current_rho * (omu215 + 3 * (current_ux + current_uy) + 4.5 * (u2 + 2 * uxuy))
+        self.nNW = (1 - omega) * self.nNW + omega * self.ini.one36th * current_rho * (omu215 + 3 * (-current_ux + current_uy) + 4.5 * (u2 - 2 * uxuy))
+        self.nSE = (1 - omega) * self.nSE + omega * self.ini.one36th * current_rho * (omu215 + 3 * (current_ux - current_uy) + 4.5 * (u2 - 2 * uxuy))
+        self.nSW = (1 - omega) * self.nSW + omega * self.ini.one36th * current_rho * (omu215 + 3 * (-current_ux - current_uy) + 4.5 * (u2 + 2 * uxuy))
+        # -----------------------
+        rho_in = 1.0
+        u_in = self.ini.u0
+        u2_in = u_in * u_in
+        omu215_in = 1 - 1.5 * u2_in
+
+        # Левая граница (x=0) - ВХОД
+        self.nE[0, :] = self.ini.one9th * rho_in * (omu215_in + 3*u_in + 4.5*u2_in)
+        self.nW[0, :] = self.ini.one9th * rho_in * (omu215_in - 3*u_in + 4.5*u2_in)
+        self.nNE[0, :] = self.ini.one36th * rho_in * (omu215_in + 3*u_in + 4.5*u2_in)
+        self.nSE[0, :] = self.ini.one36th * rho_in * (omu215_in + 3*u_in + 4.5*u2_in)
+        self.nNW[0, :] = self.ini.one36th * rho_in * (omu215_in - 3*u_in + 4.5*u2_in)
+        self.nSW[0, :] = self.ini.one36th * rho_in * (omu215_in - 3*u_in + 4.5*u2_in)
+        self.nN[0, :] = self.ini.one9th * rho_in * omu215_in
+        self.nS[0, :] = self.ini.one9th * rho_in * omu215_in
+        self.n0[0, :] = self.ini.four9ths * rho_in * omu215_in
         # ------------------------------------------------------
 
     # Считаем вихри
@@ -179,3 +200,47 @@ class Data:
         # Вихрь: ω = ∂v/∂x - ∂u/∂y
         vorticity = dv_dx - du_dy
         return vorticity
+
+    def calculate_force(self):
+        barrierFx = 0.0
+        barrierFy = 0.0
+        barrier_count = 0
+        barrier_x_sum = 0
+        barrier_y_sum = 0
+
+        for x in range(1, self.ini.width - 1):
+            for y in range(1, self.ini.height - 1):
+                if self.barrier[x, y]:
+                    # Сила по X (drag)
+                    barrierFx += (
+                            self.nE[x, y] +
+                            self.nNE[x, y] +
+                            self.nSE[x, y] -
+                            self.nW[x, y] -
+                            self.nNW[x, y] -
+                            self.nSW[x, y]
+                    )
+
+                    # Сила по Y (lift)
+                    barrierFy += (
+                            self.nN[x, y] +
+                            self.nNE[x, y] +
+                            self.nNW[x, y] -
+                            self.nS[x, y] -
+                            self.nSE[x, y] -
+                            self.nSW[x, y]
+                    )
+
+                    # Для центра силы
+                    barrier_count += 1
+                    barrier_x_sum += x
+                    barrier_y_sum += y
+
+        # Средняя позиция силы
+        if barrier_count > 0:
+            force_center_x = barrier_x_sum / barrier_count
+            force_center_y = barrier_y_sum / barrier_count
+        else:
+            force_center_x = force_center_y = 0
+
+        return barrierFx, barrierFy, force_center_x, force_center_y
